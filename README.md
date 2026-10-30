@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aera
 
-## Getting Started
+Персональное веб-приложение для тренировок, питания и прогресса. Вместо набора отдельных фитнес-сервисов здесь один спокойный интерфейс: план на сегодня, тренировка, дневник еды, шеф, календарь и история.
 
-First, run the development server:
+Пользователь пишет обычной фразой — «сегодня только 30 минут», «съела омлет из трёх яиц», «врач запретил бегать» — и приложение предлагает конкретное изменение плана. Боль и запрет врача не превращаются в диагноз: ограничение можно учесть, а рядом остаётся рекомендация обратиться к специалисту.
+
+Данные хранятся только в этом браузере. Сервера, Telegram-бота и внешней языковой модели в этой версии нет.
+
+## Запуск
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Откройте [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Собрать мой план** — короткая беседа и пустой профиль.
+- **Открыть пример** — заполненный день, чтобы сразу увидеть интерфейс.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Что есть в приложении
 
-## Learn More
+- Главная с фокусом дня, калориями, белком и неделей активности
+- AI-тренер с подтверждением изменений плана
+- Тренировки: библиотека, техника, режим выполнения и отзыв после сессии
+- Календарь, дневник питания, голос и черновик порции по фото
+- Шеф, меню на неделю, рецепты и список покупок
+- Прогресс, измерения и личный фотоархив
+- Профиль, настройки, приватность, светлая и тёмная тема
 
-To learn more about Next.js, take a look at the following resources:
+Фото еды не распознаётся: после загрузки нужно поправить черновик порции. Голос работает, если браузер умеет распознавать русскую речь.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Стек
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js, TypeScript, Tailwind CSS. Состояние сохраняется локально.

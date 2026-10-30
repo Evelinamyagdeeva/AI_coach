@@ -1,26 +1,101 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f7f8f5;
+  --surface: #ffffff;
+  --raised: #ffffff;
+  --accent: #73977f;
+  --accent-soft: #a8c0ac;
+  --ink: #26332b;
+  --muted: #7c877f;
+  --line: #e5e9e4;
+  --mist: #b8cdda;
+  --sand: #eee9de;
+  --shadow: 0 10px 30px rgba(38, 51, 43, 0.05);
+  --button: #26332b;
+  --button-text: #f7f8f5;
+}
+
+.dark {
+  --bg: #171c19;
+  --surface: #222824;
+  --raised: #2a312c;
+  --accent: #8fb39a;
+  --accent-soft: #3d5246;
+  --ink: #e7eee9;
+  --muted: #9aa59c;
+  --line: #343c37;
+  --mist: #7a96a6;
+  --sand: #2c2924;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  --button: #e7eee9;
+  --button-text: #171c19;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-accent: var(--accent);
+  --color-soft: var(--accent-soft);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-mist: var(--mist);
+  --color-sand: var(--sand);
+  --color-button: var(--button);
+  --color-button-text: var(--button-text);
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { box-sizing: border-box; }
+
+html { min-height: 100%; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: #a8c0ac;
+  color: #26332b;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
+
+a button { pointer-events: none; }
+
+input[type="checkbox"] { accent-color: var(--accent); }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.rise { animation: rise 320ms ease; }
+
+@keyframes bar {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.bar-grow { transform-origin: left; animation: bar 500ms ease; }
+
+@keyframes pop {
+  0% { transform: scale(0.86); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.pop { animation: pop 360ms ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .bar-grow, .pop { animation: none; }
 }
