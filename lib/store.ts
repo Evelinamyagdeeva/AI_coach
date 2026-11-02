@@ -3,15 +3,18 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { applyActions, snapshotOf } from "./apply";
+import { normalize } from "./body";
+import { todayISO, timeNow } from "./dates";
 import { demoSnapshot, emptySnapshot, planForNewProfile, blankProfile } from "./demo";
 import { uid } from "./id";
-import { interpret } from "./intents";
+import { interpret, type IntentResult } from "./intents";
 import { replaceFuture } from "./plan";
 import { clearPhotos } from "./photos";
 import type {
   ActiveSession,
   ChatMessage,
   Feedback,
+  FoodItem,
   Meal,
   Measurement,
   MetricKind,
@@ -132,8 +135,31 @@ export const useApp = create<AppStore>()(
       submitUtterance: (text) => {
         const state = get();
         if (!state.profile?.onboarded) return;
-        const result = interpret(text, snapshotOf(pickSnapshot(state)));
-        const user: ChatMessage = { id: uid("c"), role: "user", text: text.trim(), createdAt: new Date().toISOString() };
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        const result = interpret(trimmed, snapshotOf(pickSnapshot(state)));
+        const mealOnly = Boolean(result.actions?.length) && result.actions!.every((action) => action.type === "log_meal") && !result.proposal;
+        const foodish = /(съел|съела|поел|поела|завтракал|завтракала|обедал|обедала|ужинал|ужинала)/.test(normalize(trimmed));
+        const generic = !result.actions?.length && !result.proposal && result.link?.href === "/coach";
+        const user: ChatMessage = { id: uid("c"), role: "user", text: trimmed, createdAt: new Date().toISOString() };
+        if ((mealOnly || foodish) && !result.proposal) {
+          const pendingId = uid("c");
+          set({
+            messages: [...state.messages, user, { id: pendingId, role: "assistant", text: "Смотрю…", createdAt: new Date().toISOString() }],
+            draft: "",
+          });
+          void completeMeal(trimmed, pendingId, result);
+          return;
+        }
+        if (generic) {
+          const pendingId = uid("c");
+          set({
+            messages: [...state.messages, user, { id: pendingId, role: "assistant", text: "Смотрю…", createdAt: new Date().toISOString() }],
+            draft: "",
+          });
+          void completeChat(trimmed, pendingId);
+          return;
+        }
         let next = pickSnapshot(state);
         let undo = state.lastUndo;
         if (result.actions?.length) {
@@ -336,6 +362,130 @@ export const useApp = create<AppStore>()(
     },
   ),
 );
+
+function finishPending(id: string, message: ChatMessage, extra: Partial<Snapshot> & { lastUndo?: Snapshot | null } = {}) {
+  const state = useApp.getState();
+  useApp.setState({
+    ...extra,
+    messages: state.messages.map((item) => (item.id === id ? message : item)),
+  });
+}
+
+async function completeChat(text: string, pendingId: string) {
+  const state = useApp.getState();
+  const profile = state.profile;
+  const today = todayISO();
+  const workout = state.workouts.find((item) => item.date === today && item.status === "planned");
+  const context = profile
+    ? `${profile.name}, ${profile.weightKg} кг, цель ${profile.goal}. Сегодня: ${workout ? `${workout.name}, ${workout.durationMin} мин` : "тренировки нет"}. Ограничения: ${profile.restrictions.map((item) => item.text).join("; ") || "нет"}.`
+    : "";
+  try {
+    const response = await fetch("/api/coach", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text,
+        context,
+        history: state.messages.slice(-8, -1).map((item) => ({ role: item.role, text: item.text })),
+      }),
+    });
+    const data = (await response.json()) as { reply?: string; error?: string };
+    finishPending(pendingId, {
+      id: pendingId,
+      role: "assistant",
+      text: data.reply || data.error || "Не получилось ответить.",
+      createdAt: new Date().toISOString(),
+    });
+  } catch {
+    finishPending(pendingId, {
+      id: pendingId,
+      role: "assistant",
+      text: "Связь с тренером не удалась. Фразу можно повторить.",
+      createdAt: new Date().toISOString(),
+    });
+  }
+}
+
+async function completeMeal(text: string, pendingId: string, fallback: IntentResult) {
+  try {
+    const response = await fetch("/api/food", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    const data = (await response.json()) as { title?: string; note?: string; items?: EstimatedFood[]; error?: string };
+    if (!response.ok || !data.items?.length) throw new Error(data.error || "empty");
+    const meal: Meal = {
+      id: uid("meal"),
+      date: todayISO(),
+      time: timeNow(),
+      title: data.title || "Приём пищи",
+      source: "text",
+      items: data.items.map(toFoodItem),
+      approximate: true,
+    };
+    const state = useApp.getState();
+    const undo = snapshotOf(pickSnapshot(state));
+    const next = applyActions(pickSnapshot(state), [{ type: "log_meal", meal }]);
+    const totals = meal.items.reduce((sum, item) => sum + item.kcal, 0);
+    finishPending(
+      pendingId,
+      {
+        id: pendingId,
+        role: "assistant",
+        text: `${data.note || "Записала приём пищи."} «${meal.title}», около ${Math.round(totals)} ккал.`,
+        createdAt: new Date().toISOString(),
+        link: { href: "/nutrition", label: "Открыть питание" },
+        undoable: true,
+      },
+      { ...next, lastUndo: undo },
+    );
+  } catch {
+    const state = useApp.getState();
+    let next = pickSnapshot(state);
+    let undo = state.lastUndo;
+    if (fallback.actions?.length) {
+      undo = snapshotOf(next);
+      next = applyActions(next, fallback.actions);
+    }
+    finishPending(
+      pendingId,
+      {
+        id: pendingId,
+        role: "assistant",
+        text: fallback.reply,
+        createdAt: new Date().toISOString(),
+        link: fallback.link,
+        undoable: Boolean(fallback.undoable && fallback.actions?.length),
+      },
+      { ...next, lastUndo: undo },
+    );
+  }
+}
+
+function toFoodItem(item: EstimatedFood): FoodItem {
+  return {
+    id: uid("food"),
+    name: item.name,
+    grams: item.grams,
+    unit: "g",
+    kcal: item.kcal,
+    protein: item.protein,
+    fat: item.fat,
+    carbs: item.carbs,
+    per100: item.per100,
+  };
+}
+
+interface EstimatedFood {
+  name: string;
+  grams: number;
+  kcal: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  per100: FoodItem["per100"];
+}
 
 function pickSnapshot(state: AppStore): Snapshot {
   return {

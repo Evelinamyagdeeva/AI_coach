@@ -105,16 +105,88 @@ function amountFor(chunk: string, food: FoodDef) {
 }
 
 function itemFrom(food: FoodDef, grams: number): FoodItem {
-  const factor = grams / 100;
-  return {
-    id: uid("food"),
-    name: food.name,
-    grams: Math.round(grams),
-    kcal: Math.round(food.kcal * factor),
-    protein: round1(food.protein * factor),
-    fat: round1(food.fat * factor),
-    carbs: round1(food.carbs * factor),
+  const per100 = { kcal: food.kcal, protein: food.protein, fat: food.fat, carbs: food.carbs };
+  return scaleFood({ id: uid("food"), name: food.name, grams, unit: "g", portionWeight: 100, per100, kcal: 0, protein: 0, fat: 0, carbs: 0 });
+}
+
+export function searchLocalFoods(query: string) {
+  const text = normalize(query);
+  if (text.length < 2) return [];
+  return FOODS.filter((food) => food.name.toLowerCase().includes(text) || food.keys.some((key) => text.includes(key) || key.includes(text))).slice(0, 6);
+}
+
+export interface RemoteFood {
+  id: string;
+  name: string;
+  per100: { kcal: number; protein: number; fat: number; carbs: number };
+}
+
+export async function searchOpenFoodFacts(query: string): Promise<RemoteFood[]> {
+  const text = query.trim();
+  if (text.length < 2) return [];
+  const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(text)}&search_simple=1&action=process&json=1&page_size=6&lc=ru&fields=code,product_name,nutriments`;
+  const response = await fetch(url);
+  if (!response.ok) return [];
+  const data = (await response.json()) as {
+    products?: { code?: string; product_name?: string; nutriments?: Record<string, number> }[];
   };
+  return (data.products || [])
+    .map((product) => {
+      const nutriments = product.nutriments || {};
+      const kcal = numberOf(nutriments["energy-kcal_100g"]);
+      const name = (product.product_name || "").trim();
+      if (!name || kcal === null) return null;
+      return {
+        id: product.code || name,
+        name,
+        per100: {
+          kcal,
+          protein: numberOf(nutriments.proteins_100g) || 0,
+          fat: numberOf(nutriments.fat_100g) || 0,
+          carbs: numberOf(nutriments.carbohydrates_100g) || 0,
+        },
+      };
+    })
+    .filter((item): item is RemoteFood => Boolean(item))
+    .slice(0, 6);
+}
+
+function numberOf(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+export function foodFromPer100(name: string, per100: RemoteFood["per100"], grams = 100): FoodItem {
+  return scaleFood({
+    id: uid("food"),
+    name,
+    grams,
+    unit: "g",
+    portionWeight: 100,
+    per100,
+    kcal: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
+  });
+}
+
+export function scaleFood(item: FoodItem): FoodItem {
+  if (!item.per100) return item;
+  const portion = item.portionWeight && item.portionWeight > 0 ? item.portionWeight : 100;
+  const base = item.unit === "portion" ? (item.grams * portion) / 100 : item.grams / 100;
+  return {
+    ...item,
+    kcal: Math.round(item.per100.kcal * base),
+    protein: round1(item.per100.protein * base),
+    fat: round1(item.per100.fat * base),
+    carbs: round1(item.per100.carbs * base),
+  };
+}
+
+export function amountLabel(item: FoodItem) {
+  if (item.unit === "ml") return `${item.grams} мл`;
+  if (item.unit === "portion") return `${item.grams} × ${item.portionWeight || 100} г`;
+  return `${item.grams} г`;
 }
 
 function mealTitle(text: string, items: FoodItem[]) {

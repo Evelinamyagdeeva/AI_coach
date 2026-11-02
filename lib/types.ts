@@ -120,14 +120,19 @@ export interface ActiveSession {
   painNote?: string;
 }
 
+export type AmountUnit = "g" | "ml" | "portion";
+
 export interface FoodItem {
   id: string;
   name: string;
   grams: number;
+  unit?: AmountUnit;
+  portionWeight?: number;
   kcal: number;
   protein: number;
   fat: number;
   carbs: number;
+  per100?: { kcal: number; protein: number; fat: number; carbs: number };
 }
 
 export interface Meal {

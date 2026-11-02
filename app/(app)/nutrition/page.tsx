@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, Metric, PageHeader } from "@/components/ui/primitives";
 import { MacroLine, Ring } from "@/components/ui/ring";
 import { formatLong, todayISO } from "@/lib/dates";
+import { amountLabel } from "@/lib/foods";
 import { sumMacros, targetsFor } from "@/lib/nutrition";
 import { useApp } from "@/lib/store";
 
@@ -57,7 +58,7 @@ export default function NutritionPage() {
                     </div>
                     <p className="mt-3 text-sm text-muted">{macros.kcal} ккал · Б {grams(macros.protein)} · Ж {grams(macros.fat)} · У {grams(macros.carbs)}</p>
                     <ul className="mt-2 text-sm leading-6">
-                      {meal.items.map((item) => <li key={item.id}>{item.name} · {item.grams} г</li>)}
+                      {meal.items.map((item) => <li key={item.id}>{item.name} · {amountLabel(item)}</li>)}
                     </ul>
                   </article>
                 );
