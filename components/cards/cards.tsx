@@ -5,7 +5,7 @@ import type { Workout } from "@/lib/types";
 
 export function WorkoutCard({ workout, href }: { workout: Workout; href?: string }) {
   return (
-    <Card className="flex h-full flex-col justify-between">
+    <Card className="flex min-h-0 flex-1 flex-col justify-between">
       <div>
         <p className="text-sm text-muted">{workout.time} · {workout.difficulty}</p>
         <h3 className="mt-2 text-xl font-semibold tracking-tight">{workout.name}</h3>

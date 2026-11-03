@@ -47,6 +47,7 @@ export interface Profile {
   dietStyle: string;
   allergies: string[];
   dislikes: string[];
+  likes?: string[];
   pantry: string[];
   restrictions: Restriction[];
   recoveryNotes: string;
@@ -166,6 +167,7 @@ export interface AppNotification {
 export interface PlannedDish {
   slot: Slot;
   recipeId: string;
+  factor?: number;
 }
 
 export interface DayMenu {

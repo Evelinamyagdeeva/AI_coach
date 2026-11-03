@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, Metric, PageHeader } from "@/components/ui/primitives";
 import { MacroLine, Ring } from "@/components/ui/ring";
 import { formatLong, todayISO } from "@/lib/dates";
+import { NutritionTabs } from "@/components/nutrition/tabs";
 import { amountLabel } from "@/lib/foods";
 import { sumMacros, targetsFor } from "@/lib/nutrition";
 import { useApp } from "@/lib/store";
@@ -26,6 +27,7 @@ export default function NutritionPage() {
         text="Калории и БЖУ — оценка по цели, весу и активности, не лабораторный анализ."
         action={<Link href="/nutrition/log"><Button>Записать еду</Button></Link>}
       />
+      <NutritionTabs current="diary" />
       <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <section className="rounded-2xl border border-line bg-surface p-5">
           <Ring value={(totals.kcal / targets.kcal) * 100} label={`${totals.kcal}`} sub={`из ${targets.kcal} ккал`} />

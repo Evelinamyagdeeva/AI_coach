@@ -51,19 +51,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <div className="min-w-0">
-        <header className="sticky top-0 z-20 border-b border-line/80 bg-bg/90 px-4 py-3 backdrop-blur md:px-8">
-          <div className="mx-auto flex max-w-6xl items-center gap-3">
-            <Link href="/dashboard" className="font-semibold tracking-tight lg:hidden">
-              Aera
-            </Link>
-            <Composer />
-            <Link href="/notifications" className="relative grid h-11 w-11 place-items-center rounded-xl border border-line bg-surface lg:hidden">
-              <Bell size={18} strokeWidth={1.75} />
-              {unread ? <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent" /> : null}
-            </Link>
-          </div>
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line/80 bg-bg/90 px-4 py-3 backdrop-blur lg:hidden">
+          <Link href="/dashboard" className="font-semibold tracking-tight">
+            Aera
+          </Link>
+          <Link href="/notifications" className="relative grid h-11 w-11 place-items-center rounded-xl border border-line bg-surface">
+            <Bell size={18} strokeWidth={1.75} />
+            {unread ? <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent" /> : null}
+          </Link>
         </header>
-        <main className="mx-auto max-w-6xl px-4 py-6 pb-28 md:px-8 md:py-8 lg:pb-10">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-6 pb-40 md:px-8 md:py-8 lg:pb-32">{children}</main>
+        <Composer />
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface/95 px-2 py-2 backdrop-blur lg:hidden">
         {BOTTOM.map((item) => {

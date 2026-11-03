@@ -1,5 +1,6 @@
 import { addDays, todayISO } from "./dates";
 import { uid } from "./id";
+import { targetsFor } from "./nutrition";
 import type { DayMenu, MealPlan, Profile, Slot } from "./types";
 
 export interface Ingredient {
@@ -279,21 +280,47 @@ export function suggestRecipes(profile: Profile, slot: Slot = "dinner", limit = 
     .map((item) => item.recipe);
 }
 
+const SLOT_SHARE: Record<Slot, number> = { breakfast: 0.25, lunch: 0.35, dinner: 0.3, snack: 0.1 };
+
+export function scaledRecipe(recipe: Recipe, factor = 1) {
+  const scale = factor > 0 ? factor : 1;
+  return {
+    kcal: Math.round(recipe.kcal * scale),
+    protein: Math.round(recipe.protein * scale),
+    fat: Math.round(recipe.fat * scale),
+    carbs: Math.round(recipe.carbs * scale),
+  };
+}
+
 export function buildMealPlan(profile: Profile, from = todayISO()): MealPlan {
+  const targets = targetsFor(profile);
+  const likes = (profile.likes || []).map((item) => item.toLowerCase());
   const days: DayMenu[] = [];
   const used = new Set<string>();
   for (let i = 0; i < 7; i += 1) {
     const date = addDays(from, i);
     const meals = (["breakfast", "lunch", "dinner", "snack"] as Slot[]).map((slot) => {
       const pool = RECIPES.filter((recipe) => recipe.slots.includes(slot) && !blocked(recipe, profile));
-      const fresh = pool.find((recipe) => !used.has(`${date}-${recipe.id}`) && !days.some((day) => day.meals.some((meal) => meal.recipeId === recipe.id && meal.slot === slot)));
-      const recipe = fresh || pool[i % Math.max(pool.length, 1)] || RECIPES[0];
+      const ranked = [...pool].sort((a, b) => scoreRecipe(b, slot, targets, likes, used) - scoreRecipe(a, slot, targets, likes, used));
+      const recipe = ranked[0] || RECIPES.find((item) => item.slots.includes(slot)) || RECIPES[0];
       used.add(`${date}-${recipe.id}`);
-      return { slot, recipeId: recipe.id };
+      const goal = targets.kcal * SLOT_SHARE[slot];
+      const factor = Math.round(Math.min(1.6, Math.max(0.7, goal / recipe.kcal)) * 100) / 100;
+      return { slot, recipeId: recipe.id, factor };
     });
     days.push({ date, meals });
   }
   return { id: uid("menu"), createdAt: new Date().toISOString(), days };
+}
+
+function scoreRecipe(recipe: Recipe, slot: Slot, targets: { kcal: number; protein: number; fat: number; carbs: number }, likes: string[], used: Set<string>) {
+  const share = SLOT_SHARE[slot];
+  const factor = Math.min(1.6, Math.max(0.7, (targets.kcal * share) / recipe.kcal));
+  const scaled = scaledRecipe(recipe, factor);
+  const gap = (value: number, goal: number) => Math.abs(value - goal * share) / Math.max(goal, 1);
+  const liked = recipe.ingredients.some((item) => item.keys.some((key) => likes.some((word) => word.includes(key) || key.includes(word))));
+  const recent = [...used].filter((key) => key.endsWith(`-${recipe.id}`)).length;
+  return -(gap(scaled.protein, targets.protein) + gap(scaled.fat, targets.fat) + gap(scaled.carbs, targets.carbs)) + (liked ? 0.6 : 0) - recent * 0.2;
 }
 
 export function shoppingList(plan: MealPlan) {
@@ -304,7 +331,7 @@ export function shoppingList(plan: MealPlan) {
       if (!recipe) continue;
       for (const item of recipe.ingredients) {
         const current = map.get(item.name) || { name: item.name, category: item.category, amounts: [] };
-        current.amounts.push(item.amount);
+        current.amounts.push(scaleAmount(item.amount, meal.factor || 1));
         map.set(item.name, current);
       }
     }
@@ -312,6 +339,11 @@ export function shoppingList(plan: MealPlan) {
   return [...map.values()]
     .map((item) => ({ ...item, amount: combineAmounts(item.amounts) }))
     .sort((a, b) => a.category.localeCompare(b.category, "ru"));
+}
+
+function scaleAmount(amount: string, factor: number) {
+  if (factor === 1) return amount;
+  return amount.replace(/(\d+(?:[.,]\d+)?)/, (_, raw: string) => String(Math.max(1, Math.round(Number(raw.replace(",", ".")) * factor))));
 }
 
 function combineAmounts(amounts: string[]) {

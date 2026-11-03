@@ -28,8 +28,8 @@ export default function WorkoutsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {upcoming.map((workout) => (
-            <div key={workout.id}>
-              <p className="mb-2 text-sm text-muted">{formatLong(workout.date)}</p>
+            <div key={workout.id} className="flex h-full flex-col">
+              <p className="mb-2 shrink-0 text-sm text-muted">{formatLong(workout.date)}</p>
               <WorkoutCard workout={workout} href={`/workouts/${workout.id}`} />
             </div>
           ))}

@@ -54,6 +54,7 @@ interface AppStore extends Snapshot {
   clearMeasurements: (kind?: MetricKind) => void;
   setPhotosEnabled: (enabled: boolean) => void;
   updateProfile: (patch: Partial<Profile>) => void;
+  rateFood: (name: string, liked: boolean) => void;
   markAllRead: () => void;
   setReminders: (enabled: boolean) => void;
   generateMenu: () => void;
@@ -311,6 +312,18 @@ export const useApp = create<AppStore>()(
       clearMeasurements: (kind) => set({ measurements: kind ? get().measurements.filter((item) => item.kind !== kind) : [] }),
       setPhotosEnabled: (enabled) => set({ photosEnabled: enabled }),
       updateProfile: (patch) => set({ profile: { ...get().profile, ...patch } }),
+      rateFood: (name, liked) => {
+        const profile = get().profile;
+        const likes = (profile.likes || []).filter((item) => item !== name);
+        const dislikes = profile.dislikes.filter((item) => item !== name);
+        set({
+          profile: {
+            ...profile,
+            likes: liked ? [...likes, name] : likes,
+            dislikes: liked ? dislikes : [...dislikes, name],
+          },
+        });
+      },
       markAllRead: () => set({ notifications: get().notifications.map((item) => ({ ...item, read: true })) }),
       setReminders: (enabled) => set({ remindersOn: enabled }),
       generateMenu: () => {
